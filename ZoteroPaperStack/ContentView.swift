@@ -50,7 +50,7 @@ func stackView(title: String, papers: Binding<[Paper]>, status: PaperStatus) -> 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(paper.title)
                             .font(.subheadline)
-                            .foreground(Color(red: 0.4, green: 0.278, blue: 0.365))
+                            .foregroundColor(Color(red: 0.4, green: 0.278, blue: 0.365))
                         Text(paper.authors)
                             .font(.caption)
                             .foregroundColor(.secondary)
