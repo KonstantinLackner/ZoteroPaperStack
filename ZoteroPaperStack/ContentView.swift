@@ -1,10 +1,3 @@
-//
-// ContentView.swift
-// ZoteroPaperStack
-//
-// Created by Konstantin Lackner on 30/01/2026.
-//
-
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -14,39 +7,120 @@ let columns = [
 ]
 
 struct ContentView: View {
+    @State private var readingState: [String: PaperStatus] = [:]
+
     @State var papers: [Paper] = [
-        Paper(id: "1", title: "A Very Serious Paper", authors: "Smith, J.", status: .unread),
-        Paper(id: "2", title: "Another Even More Serious Paper", authors: "Müller, A.; Chen, L.", status: .unread),
-        Paper(id: "3", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L.", status: .unread)
+        Paper(id: "1", title: "A Very Serious Paper", authors: "Smith, J."),
+        Paper(id: "2", title: "Another Even More Serious Paper", authors: "Müller, A.; Chen, L."),
+        Paper(id: "3", title: "Another Even More Serious Paper", authors: "Müller, A.; Chen, L."),
+        Paper(id: "4", title: "Another Even More Serious Paper", authors: "Müller, A.; Chen, L."),
+        Paper(id: "5", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "6", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "7", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "8", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "9", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "10", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L."),
+        Paper(id: "11", title: "Another Even More Serious Paper With a very long title just to see how the system will handle the entire clipping thing", authors: "Müller, A.; Chen, L.")
     ]
-    
+    @State private var showUnread = false
+    @State private var showRead = false
+
+    // Renamed to avoid shadowing the papers array
+    func filteredPapers(for status: PaperStatus) -> [Paper] {
+        papers.filter { readingState[$0.id] == status }
+    }
+
     var body: some View {
         LazyVGrid(columns: columns, spacing: 20) {
-            // Pass a binding ($papers)
-            stackView(title: "Currently Reading", papers: $papers, status: .currentlyReading)
-            stackView(title: "To Read", papers: $papers, status: .toRead)
-            stackView(title: "Unread", papers: $papers, status: .unread)
-            stackView(title: "Read", papers: $papers, status: .read)
+            // Always-visible stacks
+            stackView(
+                title: "Currently Reading",
+                papers: $papers,
+                readingState: $readingState,
+                status: .currentlyReading
+            )
+
+            stackView(
+                title: "To Read",
+                papers: $papers,
+                readingState: $readingState,
+                status: .toRead
+            )
+
+            // Collapsible stacks
+            VStack { // wrap in a container to satisfy LazyVGrid
+                DisclosureGroup(
+                    isExpanded: $showUnread,
+                    content: {
+                        stackView(
+                            title: "Unread",
+                            papers: $papers,
+                            readingState: $readingState,
+                            status: .unread,
+                            showTitle: false
+                        )
+                    },
+                    label: {
+                        Text("Unread (\(filteredPapers(for: .unread).count))")
+                            .font(.headline)
+                            .foregroundColor(Color(red: 0.4, green: 0.278, blue: 0.365))
+                    }
+                )
+            }
+
+            VStack { // wrap in a container
+                DisclosureGroup(
+                    isExpanded: $showRead,
+                    content: {
+                        stackView(
+                            title: "Read",
+                            papers: $papers,
+                            readingState: $readingState,
+                            status: .read,
+                            showTitle: false
+                        )
+                    },
+                    label: {
+                        Text("Read (\(filteredPapers(for: .read).count))")
+                            .font(.headline)
+                            .foregroundColor(Color(red: 0.4, green: 0.278, blue: 0.365))
+                    }
+                )
+            }
         }
         .padding()
         .frame(minWidth: 600, minHeight: 400)
-    }
-    
-    func papers(for status: PaperStatus) -> [Paper] {
-        papers.filter { $0.status == status }
+        .onAppear {
+            readingState = loadReadingState()
+            
+            for paper in papers where readingState[paper.id] == nil {
+                readingState[paper.id] = .unread
+            }
+        }
+        .onChange(of: readingState) {
+            saveReadingState(readingState)
+        }
     }
 }
 
-func stackView(title: String, papers: Binding<[Paper]>, status: PaperStatus) -> some View {
+func stackView(
+    title: String,
+    papers: Binding<[Paper]>,
+    readingState: Binding<[String: PaperStatus]>,
+    status: PaperStatus,
+    showTitle: Bool = true
+) -> some View {
+
     VStack(alignment: .leading) {
-        Text(title)
-            .font(.headline)
-            .foregroundColor(Color(red: 0.4, green: 0.278, blue: 0.365))
-        
+        if showTitle {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(Color(red: 0.4, green: 0.278, blue: 0.365))
+        }
         ScrollView {
             VStack(alignment: .leading) {
-                // Filtered copy for display; doesn't mutate the copy
-                ForEach(papers.wrappedValue.filter { $0.status == status }) { paper in
+                let filtered = papers.wrappedValue.filter { readingState.wrappedValue[$0.id] == status }
+                ForEach(filtered) { paper in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(paper.title)
                             .font(.subheadline)
@@ -72,7 +146,6 @@ func stackView(title: String, papers: Binding<[Paper]>, status: PaperStatus) -> 
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.secondary.opacity(0.3))
         )
-        // Drop handled on ScrollView; mutate via binding
         .onDrop(of: [UTType.text], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
 
@@ -80,18 +153,15 @@ func stackView(title: String, papers: Binding<[Paper]>, status: PaperStatus) -> 
                 if let data = item as? Data,
                    let id = String(data: data, encoding: .utf8) {
                     DispatchQueue.main.async {
-                        if let index = papers.wrappedValue.firstIndex(where: { $0.id == id }) {
-                            papers.wrappedValue[index].status = status
-                        }
+                        // update readingState, not Paper
+                        readingState.wrappedValue[id] = status
                     }
                 }
             }
-            
             return true
         }
     }
 }
-
 
 #Preview {
     ContentView()
